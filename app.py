@@ -1,40 +1,191 @@
-
-from telethon import TelegramClient
-from telethon.tl.functions.account import UpdateProfileRequest
-from datetime import datetime
-import pytz
-import asyncio
 import os
+import requests
+from bs4 import BeautifulSoup
+import json
+from datetime import datetime
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-api_id = 25453504
-api_hash = 'f5166e277a4ee215bd4acd6900067dcb'
-session_name = 'm.txt.session'  # Use an absolute path
+API_TOKEN = '5834476457:AAEotyDMhlyzUNL_z-b_UyfM7EVeLTWT16Q'
+bot = telebot.TeleBot(API_TOKEN)
 
-# Ensure the directory for the session file exists
-os.makedirs(os.path.dirname(session_name), exist_ok=True)
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    markup = InlineKeyboardMarkup()
+    dev_button = InlineKeyboardButton(text='dev', url="https://t.me/z_0_g")
+    markup.add(dev_button)
+    bot.reply_to(message, "Hello, I'm a TikTok bot. Just send me your username and I will give you all the information.", reply_markup=markup)
 
-egypt_timezone = pytz.timezone('Africa/Cairo')
+@bot.message_handler(func=lambda message: True)
+def handle_text_message(message):
+    username = message.text
+    try:
+        user_info = TikTokInfo(username)
+        bot.reply_to(message, f'''
+user: @{user_info.get_usernames()}
+Nick name: {user_info.get_name()}
+User ID: {user_info.get_user_id()}
+Is verified: {user_info.is_verified()}
+Is private: {user_info.is_private()}
+Followers: {user_info.followers()}
+Following: {user_info.following()}
+Video Count: {user_info.video_count()}
+User Create Time: {user_info.user_create_time()}
+Last Time Change Nickname: {user_info.last_change_name()}
+Account Region: {user_info.region()}
+secUid: {user_info.secUid()}
+Language: {user_info.language()}
+''')
+    except ValueError as e:
+        bot.reply_to(message, f"Error: {e}")
+    except Exception as e:
+        bot.reply_to(message, "An unexpected error occurred. Please try again later.")
 
-def get_current_time_egypt():
-    print(session_name)
-    now_egypt = datetime.now(egypt_timezone)
-    return now_egypt.strftime("%H:%M")
+def country_code_to_flag_emoji(country_code):
+    country_code = country_code.upper()
+    flag_emoji = ''.join(chr(127397 + ord(char)) for char in country_code)
+    return flag_emoji
 
-async def update_first_name(client):
-    while True:
-        current_time_egypt = get_current_time_egypt()
-        new_first_name = f"🚴 EGYPT 🇪🇬 {current_time_egypt}"  
-        await client(UpdateProfileRequest(first_name=new_first_name))
-        print(f"Updated first name to: {new_first_name}")
-        await asyncio.sleep(59)
+class TikTokInfo:
+    def __init__(self, username: str):
+        self.username = username.replace("@", "") if "@" in username else username
+        self.json_data = None
+        self.admin()
 
-async def main():
-    client = TelegramClient(session_name, api_id, api_hash)
-    await client.start()
-    
-    print("Telegram client started")
-   
-    await update_first_name(client)
+    def admin(self):
+        self.send_request()
 
-if __name__ == '__main__':
-    asyncio.run(main())
+    def send_request(self):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        }
+        r = requests.get(f"https://www.tiktok.com/@{self.username}", headers=headers)
+        try:
+            soup = BeautifulSoup(r.text, 'html.parser')
+            script_tag = soup.find('script', {'id': '__UNIVERSAL_DATA_FOR_REHYDRATION__'})
+            script_text = script_tag.text.strip()
+            self.json_data = json.loads(script_text)["__DEFAULT_SCOPE__"]["webapp.user-detail"]["userInfo"]
+        except Exception:
+            raise ValueError("Username not found")
+
+    def profile(self):
+        try:
+            return str(self.json_data["user"]["avatarLarger"])
+        except:
+            return "Unknown"
+
+    def get_user_id(self):
+        try:
+            return str(self.json_data["user"]["id"])
+        except:
+            return "Unknown"
+
+    def get_usernames(self):
+        try:
+            return self.json_data["user"]["uniqueId"]
+        except:
+            return "Unknown"
+
+    def get_name(self):
+        try:
+            return self.json_data["user"]["nickname"]
+        except:
+            return "Unknown"
+
+    def is_verified(self):
+        try:
+            check = self.json_data["user"]["verified"]
+            return "Yes✅" if check else "No❌"
+        except:
+            return "Unknown"
+
+    def secUid(self):
+        try:
+            return self.json_data["user"]["secUid"]
+        except:
+            return "Unknown"
+
+    def is_private(self):
+        try:
+            check = self.json_data["user"]["privateAccount"]
+            return "Yes ✅" if check else "No ❌"
+        except:
+            return "Unknown"
+
+    def followers(self):
+        try:
+            return self.json_data["stats"]["followerCount"]
+        except:
+            return "Unknown"
+
+    def following(self):
+        try:
+            return self.json_data["stats"]["followingCount"]
+        except:
+            return "Unknown"
+
+    def user_create_time(self):
+        try:
+            url_id = int(self.get_user_id())
+            binary = "{0:b}".format(url_id)
+            i = 0
+            bits = ""
+            while i < 31:
+                bits += binary[i]
+                i += 1
+            timestamp = int(bits, 2)
+            dt_object = datetime.fromtimestamp(timestamp)
+            return dt_object
+        except:
+            return "Unknown"
+
+    def last_change_name(self):
+        try:
+            time = self.json_data["user"]["nickNameModifyTime"]
+            check = datetime.fromtimestamp(int(time))
+            return check
+        except:
+            return "Unknown"
+
+    def region(self):
+        try:
+            region_code = self.json_data["user"]["region"]
+            flag_emoji = country_code_to_flag_emoji(region_code)
+            return f"{region_code} {flag_emoji}"
+        except:
+            return "None"
+
+    def video_count(self):
+        try:
+            return self.json_data["stats"]["videoCount"]
+        except:
+            return "Unknown"
+
+    def open_favorite(self):
+        try:
+            check = self.json_data["user"]["openFavorite"]
+            return "Yes" if check else "No"
+        except:
+            return "Unknown"
+
+    def see_following(self):
+        try:
+            check = str(self.json_data["user"]["followingVisibility"])
+            return "Yes" if check == "1" else "No"
+        except:
+            return "Unknown"
+
+    def language(self):
+        try:
+            return str(self.json_data["user"]["language"])
+        except:
+            return "Unknown"
+
+    def heart_count(self):
+        try:
+            return str(self.json_data["stats"]["heart"])
+        except:
+            return "Unknown"
+
+print("Hi")
+bot.polling(none_stop=True)
