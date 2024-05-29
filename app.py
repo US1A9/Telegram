@@ -6,7 +6,7 @@ from datetime import datetime
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-API_TOKEN = '6793801816:AAGgfu3QHU7oVbNvswMRjsDrOtrLxTkSnVo'
+API_TOKEN = '5834476457:AAEotyDMhlyzUNL_z-b_UyfM7EVeLTWT16Q'
 bot = telebot.TeleBot(API_TOKEN)
 
 @bot.message_handler(commands=['start'])
