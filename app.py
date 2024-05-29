@@ -6,7 +6,7 @@ from datetime import datetime
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-API_TOKEN = '5834476457:AAEotyDMhlyzUNL_z-b_UyfM7EVeLTWT16Q'
+API_TOKEN = '6793801816:AAGgfu3QHU7oVbNvswMRjsDrOtrLxTkSnVo'
 bot = telebot.TeleBot(API_TOKEN)
 
 @bot.message_handler(commands=['start'])
@@ -36,10 +36,9 @@ Account Region: {user_info.region()}
 secUid: {user_info.secUid()}
 Language: {user_info.language()}
 ''')
-    except ValueError as e:
-        bot.reply_to(message, f"Error: {e}")
+    
     except Exception as e:
-        bot.reply_to(message, "An unexpected error occurred. Please try again later.")
+        bot.reply_to(message, "Username not found!!!!.")
 
 def country_code_to_flag_emoji(country_code):
     country_code = country_code.upper()
@@ -66,7 +65,7 @@ class TikTokInfo:
             script_text = script_tag.text.strip()
             self.json_data = json.loads(script_text)["__DEFAULT_SCOPE__"]["webapp.user-detail"]["userInfo"]
         except Exception:
-            raise ValueError("Username not found")
+        	print(f"Error: {e}")
 
     def profile(self):
         try:
@@ -189,3 +188,4 @@ class TikTokInfo:
 
 print("Hi")
 bot.polling(none_stop=True)
+            
