@@ -1,3 +1,4 @@
+import os
 import telebot
 
 bot = telebot.TeleBot('5834476457:AAEotyDMhlyzUNL_z-b_UyfM7EVeLTWT16Q')
